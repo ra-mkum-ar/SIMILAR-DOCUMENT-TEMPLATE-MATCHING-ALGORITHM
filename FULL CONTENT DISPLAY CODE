@@ -1,0 +1,159 @@
+import os
+import cv2
+import pytesseract
+import shutil
+import pdfplumber
+from docx import Document
+from docx.shared import RGBColor
+from difflib import unified_diff
+
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe'
+
+def calculate_accuracy(template_text, target_text, is_template_present):
+    template_words = set(template_text.lower().split())
+    target_words = set(target_text.lower().split())
+
+    common_words = template_words.intersection(target_words)
+    content_matching_ratio = len(common_words) / len(template_words)
+
+    accuracy_content = content_matching_ratio if is_template_present else 0.0
+    template_matching = 1.0 if is_template_present else 0.0
+
+    return accuracy_content, template_matching
+
+def extract_text_from_pdf(pdf_path):
+    with pdfplumber.open(pdf_path) as pdf:
+        text = ""
+        for page_number in range(len(pdf.pages)):
+            page = pdf.pages[page_number]
+            text += page.extract_text()
+    return text
+
+def extract_logo_position_from_image(image_path):
+    # Add code to extract logo position from image
+    pass
+
+def count_tables_pdfplumber(pdf_path):
+    with pdfplumber.open(pdf_path) as pdf:
+        table_count = sum(len(page.extract_tables()) for page in pdf.pages)
+    return table_count
+
+def move_file(source_path, destination_folder):
+    destination_path = os.path.join(destination_folder, os.path.basename(source_path))
+    shutil.copy(source_path, destination_path)
+
+def highlight_differences(template_text, target_text):
+    diff_result = list(unified_diff(template_text.splitlines(), target_text.splitlines(), lineterm=''))
+    return diff_result
+
+def save_diff_to_docx(target_file_name, template_text, target_text, result_folder):
+    doc = Document()
+    doc.add_heading(f'Differences in {target_file_name}', level=1)
+
+    diff_result = highlight_differences(template_text, target_text)
+    
+    # Create a new paragraph
+    paragraph = doc.add_paragraph()
+
+    # Iterate through the differences and add text with appropriate color
+    for line in diff_result:
+        if line.startswith('+'):
+            run = paragraph.add_run(line[1:])
+            font = run.font
+            font.color.rgb = RGBColor(255, 0, 0)  # Set font color to red
+        else:
+            paragraph.add_run(line)
+
+    diff_docx_path = os.path.join(result_folder, f'Differences_{target_file_name}.docx')
+    doc.save(diff_docx_path)
+
+def highlight_differences_pdf(template_text, target_text, template_path, target_path, fake_folder):
+    # Add code to highlight differences in the PDF and save as new PDF
+    pass
+
+def template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder, fake_folder):
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
+
+    if not os.path.exists(fake_folder):
+        os.makedirs(fake_folder)
+
+    template_files = [os.path.join(template_folder, file) for file in os.listdir(template_folder) if file.lower().endswith('.pdf')]
+
+    for target_file_name in os.listdir(target_folder):
+        if target_file_name.lower().endswith('.pdf'):
+            current_target_path = os.path.join(target_folder, target_file_name)
+
+            template_matched = False
+
+            for template_path in template_files:
+                template_name = os.path.basename(template_path)
+
+                # Extract text from the template PDF
+                template_text = extract_text_from_pdf(template_path)
+
+                # Extract text from the target PDF
+                target_text = extract_text_from_pdf(current_target_path)
+
+                print(f"\nTemplate: {template_name} | Target: {target_file_name}")
+
+                # Compare the extracted text
+                accuracy_content, template_matching = calculate_accuracy(template_text, target_text, is_template_present)
+
+                # Display accuracy values
+                print(f"Template Accuracy: {template_matching * 100:.2f}%")
+                print(f"Content Accuracy: {accuracy_content * 100:.2f}%")
+
+                # Count tables in template and target
+                template_table_count = count_tables_pdfplumber(template_path)
+                target_table_count = count_tables_pdfplumber(current_target_path)
+
+                # Check if the number of tables matches
+                tables_matching = template_table_count == target_table_count
+
+                # Print the results
+                template_match_status = "successfully" if template_matching > 0 and tables_matching else "unsuccessfully"
+                print(f"\nTemplate {template_name} matched {template_match_status}.")
+
+                # Display content matching status
+                content_matching_status = "Match" if accuracy_content == 1.0 else "Different"
+                print(f"Content Matching Status: {content_matching_status}")
+
+                # Display more information if template matched
+                if template_matching > 0 and accuracy_content == 1.0 and tables_matching:
+                    print(f"\nExtracted content from {target_file_name}:")
+                    print(target_text)
+
+                    # Move the file to the result_folder if both template and content match
+                    move_file(current_target_path, result_folder)
+                    template_matched = True
+                    break  # Break out of the loop since we found a match
+
+            if not template_matched:
+                # If no match found, move the file to the fake_folder
+                move_file(current_target_path, fake_folder)
+                print(f"Template not matched for {target_file_name}.")
+
+                # Display extracted text for unmatched file
+                print(f"\nExtracted content from unmatched file {target_file_name}:")
+                print(target_text)
+
+                # Save differences to a Word document
+                save_diff_to_docx(target_file_name, template_text, target_text, fake_folder)
+
+                # Highlight differences in the PDF and save as new PDF
+                highlight_differences_pdf(template_text, target_text, template_path, current_target_path, fake_folder)
+
+if __name__ == "__main__":
+    template_folder = 'fake'  # Replace with the path to your template folder (contains PDF files)
+    target_folder = 'pdf'  # Replace with the path to your target folder (contains PDF files)
+    is_template_present = True  # Replace with the ground truth information
+    increased_threshold = 0.9  # Adjust the threshold value as needed
+    result_folder = 'result_folder'  # Replace with the path to your result folder
+    fake_folder = 'fake_folder'  # Replace with the path to your fake folder
+
+    # Ensure that the result_folder and fake_folder exist
+    os.makedirs(result_folder, exist_ok=True)
+    os.makedirs(fake_folder, exist_ok=True)
+
+    template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder, fake_folder)
