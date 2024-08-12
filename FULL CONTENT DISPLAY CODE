@@ -1,13 +1,29 @@
 import os
-import cv2
 import pytesseract
 import shutil
 import pdfplumber
 from docx import Document
 from docx.shared import RGBColor
 from difflib import unified_diff
+import matplotlib.pyplot as plt
+import fitz  # PyMuPDF
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from io import BytesIO
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe'
+
+# Global counters for statuses
+content_status_counts = {
+    'Matched': 0,
+    'Not Matched': 0
+}
+
+template_status_counts = {
+    'Matched': 0,
+    'Not Matched': 0
+}
 
 def calculate_accuracy(template_text, target_text, is_template_present):
     template_words = set(template_text.lower().split())
@@ -22,138 +38,209 @@ def calculate_accuracy(template_text, target_text, is_template_present):
     return accuracy_content, template_matching
 
 def extract_text_from_pdf(pdf_path):
-    with pdfplumber.open(pdf_path) as pdf:
-        text = ""
-        for page_number in range(len(pdf.pages)):
-            page = pdf.pages[page_number]
-            text += page.extract_text()
+    text = ""
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+    except Exception as e:
+        print(f"Error extracting text from {pdf_path}: {e}")
     return text
 
-def extract_logo_position_from_image(image_path):
-    # Add code to extract logo position from image
-    pass
-
 def count_tables_pdfplumber(pdf_path):
-    with pdfplumber.open(pdf_path) as pdf:
-        table_count = sum(len(page.extract_tables()) for page in pdf.pages)
+    table_count = 0
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            table_count = sum(len(page.extract_tables()) for page in pdf.pages)
+    except Exception as e:
+        print(f"Error counting tables in {pdf_path}: {e}")
     return table_count
 
 def move_file(source_path, destination_folder):
-    destination_path = os.path.join(destination_folder, os.path.basename(source_path))
-    shutil.copy(source_path, destination_path)
+    try:
+        destination_path = os.path.join(destination_folder, os.path.basename(source_path))
+        shutil.copy(source_path, destination_path)
+    except Exception as e:
+        print(f"Error moving file {source_path} to {destination_folder}: {e}")
 
 def highlight_differences(template_text, target_text):
-    diff_result = list(unified_diff(template_text.splitlines(), target_text.splitlines(), lineterm=''))
-    return diff_result
+    return list(unified_diff(template_text.splitlines(), target_text.splitlines(), lineterm=''))
 
 def save_diff_to_docx(target_file_name, template_text, target_text, result_folder):
     doc = Document()
     doc.add_heading(f'Differences in {target_file_name}', level=1)
-
-    diff_result = highlight_differences(template_text, target_text)
     
-    # Create a new paragraph
+    diff_result = highlight_differences(template_text, target_text)
     paragraph = doc.add_paragraph()
-
-    # Iterate through the differences and add text with appropriate color
+    
     for line in diff_result:
         if line.startswith('+'):
             run = paragraph.add_run(line[1:])
-            font = run.font
-            font.color.rgb = RGBColor(255, 0, 0)  # Set font color to red
+            run.font.color.rgb = RGBColor(255, 0, 0)  # Red for additions
         else:
             paragraph.add_run(line)
-
+    
     diff_docx_path = os.path.join(result_folder, f'Differences_{target_file_name}.docx')
     doc.save(diff_docx_path)
 
-def highlight_differences_pdf(template_text, target_text, template_path, target_path, fake_folder):
-    # Add code to highlight differences in the PDF and save as new PDF
-    pass
+def create_table_pdf():
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
 
-def template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder, fake_folder):
+    # Define the table data
+    data = [
+        ['Status', 'Count', 'Percentage'],
+        ['Matched Content', content_status_counts['Matched'], f"{(content_status_counts['Matched'] / sum(content_status_counts.values()) * 100):.1f}%"],
+        ['Not Matched Content', content_status_counts['Not Matched'], f"{(content_status_counts['Not Matched'] / sum(content_status_counts.values()) * 100):.1f}%"],
+        ['Matched Template', template_status_counts['Matched'], f"{(template_status_counts['Matched'] / sum(template_status_counts.values()) * 100):.1f}%"],
+        ['Not Matched Template', template_status_counts['Not Matched'], f"{(template_status_counts['Not Matched'] / sum(template_status_counts.values()) * 100):.1f}%"]
+    ]
+    
+    # Create a Table object
+    table = Table(data)
+    
+    # Apply some table styling
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+    ]))
+    
+    # Build the PDF into the BytesIO buffer
+    doc.build([table])
+    buffer.seek(0)
+    
+    return buffer.getvalue()
+
+def add_table_to_pdf(existing_pdf_path, output_pdf_path):
+    if not os.path.isfile(existing_pdf_path):
+        print("File not found:", existing_pdf_path)
+        return
+
+    # Load the existing PDF
+    existing_pdf = fitz.open(existing_pdf_path)
+    
+    # Create a new PDF with the table
+    table_pdf = create_table_pdf()
+    table_pdf_doc = fitz.open(stream=table_pdf, filetype="pdf")
+    
+    # Get the first page of the existing PDF and the table PDF
+    page = existing_pdf[0]
+    table_page = table_pdf_doc[0]
+
+    # Define the position and size for the table
+    rect = fitz.Rect(50, 50, 500, 750)  # Adjust as needed
+
+    # Overlay the table PDF onto the existing PDF
+    page.insert_pdf(table_pdf_doc, from_page=0, to_page=0, rect=rect)
+    
+    # Save the modified PDF
+    existing_pdf.save(output_pdf_path)
+    existing_pdf.close()
+    table_pdf_doc.close()
+
+def template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder):
+    global content_status_counts, template_status_counts
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
-
-    if not os.path.exists(fake_folder):
-        os.makedirs(fake_folder)
-
+    
     template_files = [os.path.join(template_folder, file) for file in os.listdir(template_folder) if file.lower().endswith('.pdf')]
-
+    
     for target_file_name in os.listdir(target_folder):
         if target_file_name.lower().endswith('.pdf'):
             current_target_path = os.path.join(target_folder, target_file_name)
-
+            
             template_matched = False
-
+            
             for template_path in template_files:
                 template_name = os.path.basename(template_path)
-
-                # Extract text from the template PDF
                 template_text = extract_text_from_pdf(template_path)
-
-                # Extract text from the target PDF
                 target_text = extract_text_from_pdf(current_target_path)
 
                 print(f"\nTemplate: {template_name} | Target: {target_file_name}")
 
-                # Compare the extracted text
                 accuracy_content, template_matching = calculate_accuracy(template_text, target_text, is_template_present)
 
-                # Display accuracy values
                 print(f"Template Accuracy: {template_matching * 100:.2f}%")
                 print(f"Content Accuracy: {accuracy_content * 100:.2f}%")
 
-                # Count tables in template and target
                 template_table_count = count_tables_pdfplumber(template_path)
                 target_table_count = count_tables_pdfplumber(current_target_path)
 
-                # Check if the number of tables matches
                 tables_matching = template_table_count == target_table_count
 
-                # Print the results
                 template_match_status = "successfully" if template_matching > 0 and tables_matching else "unsuccessfully"
                 print(f"\nTemplate {template_name} matched {template_match_status}.")
 
-                # Display content matching status
                 content_matching_status = "Match" if accuracy_content == 1.0 else "Different"
                 print(f"Content Matching Status: {content_matching_status}")
 
-                # Display more information if template matched
                 if template_matching > 0 and accuracy_content == 1.0 and tables_matching:
                     print(f"\nExtracted content from {target_file_name}:")
                     print(target_text)
 
-                    # Move the file to the result_folder if both template and content match
                     move_file(current_target_path, result_folder)
+                    content_status_counts['Matched'] += 1
+                    template_status_counts['Matched'] += 1
                     template_matched = True
-                    break  # Break out of the loop since we found a match
+                    break
 
             if not template_matched:
-                # If no match found, move the file to the fake_folder
-                move_file(current_target_path, fake_folder)
-                print(f"Template not matched for {target_file_name}.")
+                save_diff_to_docx(target_file_name, template_text, target_text, result_folder)
+                content_status_counts['Not Matched'] += 1
+                template_status_counts['Not Matched'] += 1
 
-                # Display extracted text for unmatched file
-                print(f"\nExtracted content from unmatched file {target_file_name}:")
-                print(target_text)
+def plot_pie_charts():
+    # Pie chart for content mismatch status
+    plt.figure(figsize=(14, 7))
+    
+    plt.subplot(1, 2, 1)
+    labels = content_status_counts.keys()
+    sizes = content_status_counts.values()
+    colors = ['#28a745', '#dc3545']  # Green for Matched, Red for Not Matched
+    explode = (0.1, 0)  # Explode the 1st slice (Matched)
+    
+    # Calculate percentages
+    total_content = sum(sizes)
+    percentages = [(size / total_content * 100) for size in sizes]
 
-                # Save differences to a Word document
-                save_diff_to_docx(target_file_name, template_text, target_text, fake_folder)
+    plt.pie(sizes, explode=explode, labels=[f'{label} ({percent:.1f}%)' for label, percent in zip(labels, percentages)], colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+    plt.axis('equal')
+    plt.title('Content Mismatch Status')
+    
+    # Pie chart for template mismatch status
+    plt.subplot(1, 2, 2)
+    labels = template_status_counts.keys()
+    sizes = template_status_counts.values()
+    colors = ['#28a745', '#dc3545']  # Green for Matched, Red for Not Matched
+    explode = (0.1, 0)  # Explode the 1st slice (Matched)
+    
+    # Calculate percentages
+    total_template = sum(sizes)
+    percentages = [(size / total_template * 100) for size in sizes]
 
-                # Highlight differences in the PDF and save as new PDF
-                highlight_differences_pdf(template_text, target_text, template_path, current_target_path, fake_folder)
+    plt.pie(sizes, explode=explode, labels=[f'{label} ({percent:.1f}%)' for label, percent in zip(labels, percentages)], colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+    plt.axis('equal')
+    plt.title('Template Mismatch Status')
+
+    plt.show()
 
 if __name__ == "__main__":
-    template_folder = 'fake'  # Replace with the path to your template folder (contains PDF files)
-    target_folder = 'pdf'  # Replace with the path to your target folder (contains PDF files)
+    template_folder = 'ORIGINAL'  # Replace with the path to your template folder (contains PDF files)
+    target_folder = 'TARGET'  # Replace with the path to your target folder (contains PDF files)
     is_template_present = True  # Replace with the ground truth information
     increased_threshold = 0.9  # Adjust the threshold value as needed
-    result_folder = 'result_folder'  # Replace with the path to your result folder
-    fake_folder = 'fake_folder'  # Replace with the path to your fake folder
+    result_folder = 'RESULTS'  # Replace with the path to your result folder
 
-    # Ensure that the result_folder and fake_folder exist
     os.makedirs(result_folder, exist_ok=True)
-    os.makedirs(fake_folder, exist_ok=True)
 
-    template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder, fake_folder)
+    template_matching_with_ocr(template_folder, target_folder, is_template_present, increased_threshold, result_folder)
+    plot_pie_charts()
+
+    # Create a summary PDF with the results table
+    results_pdf_path = os.path.join(result_folder, 'Results_Summary.pdf')
+    add_table_to_pdf(results_pdf_path, results_pdf_path)
