@@ -1,5 +1,8 @@
 # 📄 Document Duplicate Detection System (PDF Content-Based)
 
+!(<img width="1922" height="979" alt="1" src="https://github.com/user-attachments/assets/3c37d541-1a32-4c10-8e85-6a3efd7a4c27" />
+
+
 ## 1. Project Overview
 
 The **Document Duplicate Detection System** is a Python-based solution designed to determine whether two PDF documents represent the **same real-world record** (for example, the same medical invoice) by comparing their **content**, not their visual appearance.
