@@ -1,4 +1,8 @@
-# 📄 Document Duplicate Detection System (PDF Content-Based)
+# 📄 SIMILAR DOCUMENT TEMPLATE MATCHING ALGORITHM
+
+# DEMO VIDEO
+
+https://github.com/user-attachments/assets/6005ed1f-5f8e-4ff1-a26c-1e14416d30a1
 
 ## 1. Project Overview
 
@@ -61,11 +65,7 @@ This section explains the **complete workflow** of the application as seen in th
   * Document Matcher
   * Match History
 
-**Image placement:**
-
-```md
-![Dashboard – Document Matcher](images/1-dashboard.png)
-```
+<img width="1922" height="979" alt="1" src="https://github.com/user-attachments/assets/591c1751-278e-40a0-ada3-b349606d2fe0" />
 
 ---
 
@@ -89,12 +89,7 @@ This section explains the **complete workflow** of the application as seen in th
 * Template metadata generation
 * Template stored in template library
 
-**Image placement:**
-
-```md
-![Template Manager – Empty State](images/2-template-empty.png)
-![Template Manager – Template Uploaded](images/3-template-added.png)
-```
+<img width="1923" height="1035" alt="2" src="https://github.com/user-attachments/assets/91559d33-362b-4c32-b93a-1b03dce6cc84" />
 
 ---
 
@@ -115,11 +110,7 @@ This section explains the **complete workflow** of the application as seen in th
 
 * Establishes a **trusted baseline document** for comparison
 
-**Image placement:**
-
-```md
-![Template Library – AI Analysis](images/4-template-analysis.png)
-```
+<img width="1904" height="894" alt="3" src="https://github.com/user-attachments/assets/cbe52a84-5392-4e7e-912d-1eab69cfbf05" />
 
 ---
 
@@ -138,11 +129,7 @@ This section explains the **complete workflow** of the application as seen in th
 * Extract structured fields from query document
 * Align fields with template fields
 
-**Image placement:**
-
-```md
-![Document Matcher – Upload](images/5-document-matcher.png)
-```
+<img width="1923" height="1033" alt="4" src="https://github.com/user-attachments/assets/fe5ad1dc-5d92-4776-a0e5-bcb2cc6824ab" />
 
 ---
 
@@ -161,11 +148,7 @@ This section explains the **complete workflow** of the application as seen in th
 
 * Backend decision still relies on **content fields**, not layout
 
-**Image placement:**
-
-```md
-![Similarity Scores](images/6-similarity-scores.png)
-```
+<img width="1923" height="1037" alt="5" src="https://github.com/user-attachments/assets/7d8e3a93-b992-4f57-8a81-eb94d530f836" />
 
 ---
 
@@ -187,12 +170,6 @@ This section explains the **complete workflow** of the application as seen in th
 * Critical-field mismatch detection
 * Rule-based risk scoring
 
-**Image placement:**
-
-```md
-![Forgery Risk & Red Flags](images/7-forgery-flags.png)
-```
-
 ---
 
 ### 🔹 Step 7: Field-Level Difference Table
@@ -212,11 +189,8 @@ This section explains the **complete workflow** of the application as seen in th
 
 * Auditors and reviewers can manually verify decisions
 
-**Image placement:**
+<img width="1923" height="1037" alt="5" src="https://github.com/user-attachments/assets/a5385499-9dfc-4993-916c-28cfef80886e" />
 
-```md
-![Field Differences Table](images/8-field-differences.png)
-```
 
 ---
 
@@ -234,11 +208,7 @@ This section explains the **complete workflow** of the application as seen in th
 
 * Useful for reports, audits, and decision justification
 
-**Image placement:**
-
-```md
-![AI Explanation](images/9-ai-explanation.png)
-```
+<img width="1923" height="1030" alt="6" src="https://github.com/user-attachments/assets/2f7fed6a-f7cf-43db-9e39-fc9f781e175a" />
 
 ---
 
@@ -255,11 +225,8 @@ This section explains the **complete workflow** of the application as seen in th
   * Timestamp
   * Result count
 
-**Image placement:**
+<img width="1923" height="1037" alt="7" src="https://github.com/user-attachments/assets/f692a8ba-31f6-4648-8cd3-221a97173924" />
 
-```md
-![Match History](images/10-match-history.png)
-```
 
 ---
 
@@ -427,7 +394,11 @@ pip install pdfplumber
 Put the two PDFs to be compared in the project folder and name them:
 
 * `original.pdf`
+[ORIGINAL UPLOAD.pdf](https://github.com/user-attachments/files/24490965/ORIGINAL.UPLOAD.pdf)
+
 * `duplicate.pdf`
+[DUPLICATE UPLOAD.pdf](https://github.com/user-attachments/files/24490969/DUPLICATE.UPLOAD.pdf)
+
 
 ### Step 3: Run the script
 
