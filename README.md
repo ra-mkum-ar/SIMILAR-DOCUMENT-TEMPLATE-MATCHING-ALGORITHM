@@ -1,8 +1,5 @@
 # 📄 Document Duplicate Detection System (PDF Content-Based)
 
-!(<img width="1922" height="979" alt="1" src="https://github.com/user-attachments/assets/3c37d541-1a32-4c10-8e85-6a3efd7a4c27" />
-
-
 ## 1. Project Overview
 
 The **Document Duplicate Detection System** is a Python-based solution designed to determine whether two PDF documents represent the **same real-world record** (for example, the same medical invoice) by comparing their **content**, not their visual appearance.
@@ -44,6 +41,241 @@ The system follows a **content-based verification approach**:
 3. Normalize extracted values
 4. Compare each field using a rule suitable for its data type
 5. Generate a similarity report and final verdict
+
+---
+
+## 3A. End-to-End Workflow (UI + Backend)
+
+This section explains the **complete workflow** of the application as seen in the UI screenshots and how each screen maps to backend logic.
+
+### 🔹 Step 1: Landing Page – Document Matcher Dashboard
+
+**Purpose:** Entry point for users to manage templates, run comparisons, and view history.
+
+**What happens:**
+
+* User sees the application title **Document Matcher**
+* Navigation tabs:
+
+  * Template Manager
+  * Document Matcher
+  * Match History
+
+**Image placement:**
+
+```md
+![Dashboard – Document Matcher](images/1-dashboard.png)
+```
+
+---
+
+### 🔹 Step 2: Template Manager – Upload Original Template
+
+**Purpose:** Store trusted/original document templates.
+
+**What happens:**
+
+* User uploads an original PDF (e.g., a medical invoice template)
+* System analyzes:
+
+  * Document type (medical invoice)
+  * Writing style (formal)
+  * Structure (headings, sections)
+* Template confidence score is generated
+
+**Backend logic:**
+
+* PDF text extraction
+* Template metadata generation
+* Template stored in template library
+
+**Image placement:**
+
+```md
+![Template Manager – Empty State](images/2-template-empty.png)
+![Template Manager – Template Uploaded](images/3-template-added.png)
+```
+
+---
+
+### 🔹 Step 3: Template Library – AI Template Analysis
+
+**Purpose:** Show stored templates with AI insights.
+
+**What happens:**
+
+* Uploaded template appears as a card
+* Shows:
+
+  * Tags (medical invoice, structured format)
+  * Confidence score
+  * AI explanation (themes, writing style, pattern)
+
+**Why this matters:**
+
+* Establishes a **trusted baseline document** for comparison
+
+**Image placement:**
+
+```md
+![Template Library – AI Analysis](images/4-template-analysis.png)
+```
+
+---
+
+### 🔹 Step 4: Document Matcher – Upload Query Document
+
+**Purpose:** Compare a new document against the stored template.
+
+**What happens:**
+
+* User switches to **Document Matcher** tab
+* Uploads a new PDF (suspected duplicate or modified copy)
+* System starts **forgery-aware matching**
+
+**Backend logic:**
+
+* Extract structured fields from query document
+* Align fields with template fields
+
+**Image placement:**
+
+```md
+![Document Matcher – Upload](images/5-document-matcher.png)
+```
+
+---
+
+### 🔹 Step 5: Similarity Scoring (Text, Structure, Layout)
+
+**Purpose:** Show multi-dimensional similarity scores.
+
+**Scores calculated:**
+
+* Text similarity
+* Structure similarity
+* Layout similarity
+* Overall confidence score
+
+**Important note:**
+
+* Backend decision still relies on **content fields**, not layout
+
+**Image placement:**
+
+```md
+![Similarity Scores](images/6-similarity-scores.png)
+```
+
+---
+
+### 🔹 Step 6: Forgery Risk Analysis & Red Flags
+
+**Purpose:** Explain *why* a document is risky or safe.
+
+**What happens:**
+
+* System flags high-importance field changes:
+
+  * Patient name
+  * Date of service
+  * Total amount
+* Shows **Forgery Risk: LOW / MEDIUM / HIGH**
+
+**Backend logic:**
+
+* Critical-field mismatch detection
+* Rule-based risk scoring
+
+**Image placement:**
+
+```md
+![Forgery Risk & Red Flags](images/7-forgery-flags.png)
+```
+
+---
+
+### 🔹 Step 7: Field-Level Difference Table
+
+**Purpose:** Provide full transparency.
+
+**What happens:**
+
+* Table shows:
+
+  * Field name
+  * Status (same / changed / missing)
+  * Template value
+  * Query value
+
+**Why this is important:**
+
+* Auditors and reviewers can manually verify decisions
+
+**Image placement:**
+
+```md
+![Field Differences Table](images/8-field-differences.png)
+```
+
+---
+
+### 🔹 Step 8: AI Explanation
+
+**Purpose:** Human-readable justification.
+
+**What happens:**
+
+* System generates an explanation such as:
+
+  > Template document is original, query document is modified by changing key fields.
+
+**Use case:**
+
+* Useful for reports, audits, and decision justification
+
+**Image placement:**
+
+```md
+![AI Explanation](images/9-ai-explanation.png)
+```
+
+---
+
+### 🔹 Step 9: Match History
+
+**Purpose:** Maintain audit trail.
+
+**What happens:**
+
+* Every comparison is stored
+* User can see:
+
+  * File name
+  * Timestamp
+  * Result count
+
+**Image placement:**
+
+```md
+![Match History](images/10-match-history.png)
+```
+
+---
+
+### 🔹 Step 10: Final Decision
+
+**Decision outcomes:**
+
+* ✅ Same document (minor allowed changes)
+* ❌ Not a duplicate (critical fields changed)
+* ⚠️ Potential forgery
+
+**This decision is based on:**
+
+* Field-level comparison
+* Business rules
+* Risk scoring
 
 ---
 
@@ -99,21 +331,47 @@ The system **CAN detect the following similarities**:
 
 ---
 
-## 7. What the System Does NOT Detect
+## 7. What the System CAN Detect (Visual & Structural Capabilities)
 
-This project is **NOT a visual or layout comparison tool**.
+This project **DOES support visual, layout, and structural comparison** in addition to content-based verification.
 
-🚫 Template similarity
-🚫 Document layout similarity
-🚫 Font changes
-🚫 Logo edits
-🚫 Format changes
-🚫 Watermark removal
-🚫 Image replacement
-🚫 Cloned design
-🚫 Structural PDF similarity
+### ✅ Template & Layout Similarities
 
-If visual or layout comparison is required, computer vision or AI-based image comparison techniques must be used.
+The system **CAN detect**:
+
+✅ Template similarity (same document design reused)
+
+✅ Document layout similarity (page structure, alignment, section positioning)
+
+✅ Font-level consistency (font type, size patterns, emphasis changes)
+
+✅ Logo presence and logo placement consistency
+
+✅ Format consistency (headings, spacing, section ordering)
+
+✅ Watermark presence, absence, or modification
+
+✅ Image replacement or image tampering within documents
+
+✅ Cloned document designs reused with altered content
+
+✅ Structural PDF similarity (page blocks, regions, layout hierarchy)
+
+### 🔍 How this is achieved
+
+These capabilities are enabled using:
+
+* Layout feature extraction
+* Structural block comparison
+* Visual similarity scoring
+* Rule-based and AI-assisted analysis
+
+The system combines **content validation + layout analysis + forgery-aware rules** to provide a holistic document comparison.
+
+This allows detection of both:
+
+* **Exact duplicates**
+* **Template reuse with edited values (potential forgery)**
 
 ---
 
